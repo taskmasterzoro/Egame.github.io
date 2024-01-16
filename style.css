@@ -274,7 +274,7 @@ section {
 .home-text h1 {
     font-size: 2.4rem;
     text-transform: uppercase;
-    color: var(--dark-color);
+    color: #c6a8ff;
     margin-bottom: 2rem;
     font-family: 'Games', sans-serif;
 }
