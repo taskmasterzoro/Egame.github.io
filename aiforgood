@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI for Good: Agentic Project Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Eco-Tech Harmony -->
+    <!-- Application Structure Plan: The SPA is designed as an interactive dashboard. The primary structure uses thematic navigation ('Overview', 'Climate & Nature', 'Education', 'Community Empowerment') to segment the 30 projects, preventing user overload. The 'Overview' acts as a landing page with summary visualizations (donut chart for project distribution, bar chart for tech usage) to give an immediate high-level understanding. The core of the app is a filterable card-based grid, allowing users to dynamically explore projects. Clicking a card opens a modal for detailed information, keeping the user within the main context. This structure was chosen because it transforms a static list into an exploratory tool, catering to different user interests (e.g., someone interested only in LangChain, or only in Climate projects) and promoting discoverability over linear reading. -->
+    <!-- Visualization & Content Choices: 
+        1. Project Distribution -> Goal: Inform/Compare -> Viz: Donut Chart -> Interaction: Hover for details, click to filter main view -> Justification: Provides a quick, visual breakdown of project focus areas. -> Library: Chart.js/Canvas.
+        2. Technology Popularity -> Goal: Inform/Compare -> Viz: Horizontal Bar Chart -> Interaction: Hover for counts -> Justification: Shows the prevalence of different agentic frameworks at a glance. -> Library: Chart.js/Canvas.
+        3. Project Catalog -> Goal: Organize/Inform -> Presentation: Card Grid -> Interaction: Filter by category/tech, click for modal -> Justification: A scalable and visually appealing way to browse many items. -> Method: HTML/Tailwind/JS.
+        4. Project Details -> Goal: Inform -> Presentation: Modal Window -> Interaction: Close modal -> Justification: Provides detailed info without leaving the main browsing interface. -> Method: HTML/Tailwind/JS.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8F7F4;
+            color: #383734;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .modal-bg {
+            transition: opacity 0.3s ease;
+        }
+        .modal-box {
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        .nav-button.active {
+            background-color: #385a4a;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .tech-tag {
+            background-color: #e0e7d6;
+            color: #385a4a;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .project-card {
+            border: 1px solid #e5e7eb;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="app" class="container mx-auto px-4 py-8">
+
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-[#385a4a]">AI for Good</h1>
+            <p class="text-lg text-gray-600 mt-2">An Interactive Explorer of Agentic AI Projects</p>
+        </header>
+
+        <nav class="flex justify-center flex-wrap gap-3 mb-10">
+            <button data-category="all" class="nav-button active px-5 py-2 rounded-full text-sm font-medium bg-white text-gray-700 hover:bg-gray-100 transition-colors">Overview</button>
+            <button data-category="Climate & Nature" class="nav-button px-5 py-2 rounded-full text-sm font-medium bg-white text-gray-700 hover:bg-gray-100 transition-colors">Climate & Nature</button>
+            <button data-category="Education" class="nav-button px-5 py-2 rounded-full text-sm font-medium bg-white text-gray-700 hover:bg-gray-100 transition-colors">Education</button>
+            <button data-category="Community Empowerment" class="nav-button px-5 py-2 rounded-full text-sm font-medium bg-white text-gray-700 hover:bg-gray-100 transition-colors">Community Empowerment</button>
+        </nav>
+
+        <main id="main-content">
+            <section id="overview-section" class="mb-12">
+                <p class="text-center max-w-3xl mx-auto mb-10 text-gray-700">
+                    This dashboard provides an overview of 30 conceptual projects leveraging agentic AI frameworks like Crew.ai and LangChain for social good. The visualizations below summarize the distribution of projects across key impact areas and the technologies they employ. Use the navigation to explore projects within a specific theme.
+                </p>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm">
+                        <h3 class="text-xl font-semibold text-center mb-4">Project Distribution by Sector</h3>
+                        <div class="chart-container">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm">
+                        <h3 class="text-xl font-semibold text-center mb-4">Technology Framework Usage</h3>
+                        <div class="chart-container" style="max-width: 500px; height:350px;">
+                             <canvas id="techChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="projects-section">
+                 <div class="flex justify-center mb-6">
+                    <input type="text" id="search-input" placeholder="Search projects by title or tech..." class="w-full max-w-lg px-4 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-[#385a4a] focus:outline-none">
+                </div>
+                <div id="projects-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                </div>
+                 <p id="no-results" class="text-center text-gray-500 py-10 hidden">No projects match your search.</p>
+            </section>
+        </main>
+    </div>
+
+    <div id="modal" class="fixed inset-0 z-50 items-center justify-center hidden">
+        <div id="modal-bg" class="absolute inset-0 bg-black bg-opacity-60"></div>
+        <div id="modal-box" class="relative bg-white w-11/12 max-w-2xl mx-auto rounded-2xl shadow-xl p-6 md:p-8 opacity-0 transform scale-95">
+            <button id="modal-close" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800">
+                <span class="text-2xl">&times;</span>
+            </button>
+            <h2 id="modal-title" class="text-2xl font-bold text-[#385a4a] mb-3"></h2>
+            <p id="modal-category" class="text-sm font-medium text-gray-500 mb-4"></p>
+            <p id="modal-synopsis" class="text-gray-700 mb-5"></p>
+            <h4 class="font-semibold text-gray-800 mb-2">Technology & Techniques:</h4>
+            <div id="modal-tech" class="flex flex-wrap gap-2">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const projectsData = [
+            {
+                id: 1, title: 'EcoSleuth AI', category: 'Climate & Nature',
+                synopsis: 'An autonomous research team of AI agents that scours climate research papers, news, and policy documents to identify and summarize emerging climate solutions and risks, delivering daily briefings.',
+                tech: ['Crew.ai', 'LangChain', 'Vector DB', 'BERT']
+            },
+            {
+                id: 2, title: 'GreenThumb Agent', category: 'Climate & Nature',
+                synopsis: 'A personalized agent for sustainable farming. It uses agents to monitor weather APIs, soil sensor data, and market prices to provide small-scale farmers with optimal planting and resource management advice.',
+                tech: ['Crew.ai', 'LangChain', 'IoT', 'TensorFlow']
+            },
+            {
+                id: 3, title: 'AquaGuard', category: 'Climate & Nature',
+                synopsis: 'An AI system using agents to monitor water quality in real-time. It analyzes data from satellite imagery and local sensors to predict harmful algal blooms and sources of pollution, alerting local authorities.',
+                tech: ['N8N', 'LangChain', 'Computer Vision', 'Predictive Analytics']
+            },
+            {
+                id: 4, title: 'WildTrack AI', category: 'Climate & Nature',
+                synopsis: 'A network of agents that processes data from camera traps and acoustic sensors to monitor endangered species. It identifies individual animals and tracks population dynamics to aid conservation efforts.',
+                tech: ['Crew.ai', 'PyTorch', 'Computer Vision', 'Acoustic Analysis']
+            },
+            {
+                id: 5, title: 'CarbonCredit Verifier', category: 'Climate & Nature',
+                synopsis: 'Uses an agentic workflow to automate the verification of carbon offset projects. It analyzes satellite data, project documentation, and community reports to ensure legitimacy and impact.',
+                tech: ['N8N', 'Crew.ai', 'GIS', 'LangChain']
+            },
+            {
+                id: 6, title: 'ClimatePolicy Navigator', category: 'Climate & Nature',
+                synopsis: 'An AI assistant that helps policymakers and NGOs understand and compare climate policies globally. It uses LangChain to process complex legal and policy documents into accessible summaries and impact analyses.',
+                tech: ['LangChain', 'RAG', 'Vector DB']
+            },
+             {
+                id: 7, title: 'Deforestation DroneNet', category: 'Climate & Nature',
+                synopsis: 'An N8N workflow that triggers autonomous drone surveillance over high-risk forest areas when satellite data shows potential illegal logging. Agents on the drones analyze footage in real-time.',
+                tech: ['N8N', 'Computer Vision', 'Drones']
+            },
+            {
+                id: 8, title: 'Oceanic Debris Mapper', category: 'Climate & Nature',
+                synopsis: 'AI agents that analyze ocean current data and satellite imagery to predict the accumulation zones of plastic debris, helping cleanup crews operate more efficiently.',
+                tech: ['Crew.ai', 'Predictive Modeling', 'GIS']
+            },
+            {
+                id: 9, title: 'LearnSphere Tutor', category: 'Education',
+                synopsis: 'A personalized AI tutor that creates dynamic learning paths. It uses LangChain to chain educational resources (videos, articles, quizzes) based on a student\'s progress and learning style.',
+                tech: ['LangChain', 'GPT-4', 'Scikit-learn']
+            },
+            {
+                id: 10, title: 'CareerCompass AI', category: 'Education',
+                synopsis: 'An AI guidance counselor for students. It uses Crew.ai agents to research careers, university programs, and scholarships based on a student\'s interests and academic profile, creating a personalized roadmap.',
+                tech: ['Crew.ai', 'LangChain', 'Web Scraping']
+            },
+            {
+                id: 11, title: 'EduAccess Agent', category: 'Education',
+                synopsis: 'An agent that creates accessible educational materials for students with disabilities. It can convert standard text into braille-ready formats, generate audio descriptions for videos, and simplify language for cognitive accessibility.',
+                tech: ['LangChain', 'Text-to-Speech', 'NLP']
+            },
+            {
+                id: 12, title: 'Syllabus Scripter', category: 'Education',
+                synopsis: 'An N8N-powered tool for educators that automates the creation of a draft syllabus. The educator provides topics and learning outcomes, and the workflow pulls in relevant open-source readings, videos, and assignment ideas.',
+                tech: ['N8N', 'LangChain', 'OpenAI API']
+            },
+            {
+                id: 13, title: 'Historical AI Archives', category: 'Education',
+                synopsis: 'An interactive learning tool where AI agents, acting as historical figures, engage students in conversation. Powered by LangChain with RAG to ensure historical accuracy based on source documents.',
+                tech: ['LangChain', 'RAG', 'ChromaDB']
+            },
+            {
+                id: 14, title: 'STEM-Sim', category: 'Education',
+                synopsis: 'An agent-based system that creates complex, interactive simulations for STEM concepts (e.g., chemical reactions, ecosystem dynamics), allowing students to experiment in a virtual lab.',
+                tech: ['Crew.ai', 'Reinforcement Learning']
+            },
+            {
+                id: 15, title: 'Debate Coach AI', category: 'Education',
+                synopsis: 'A LangChain-powered application that helps students practice debating. It can take a position on a topic, provide counter-arguments, and give feedback on the logical structure of a student\'s arguments.',
+                tech: ['LangChain', 'Speech-to-Text', 'NLP']
+            },
+            {
+                id: 16, title: 'Global Classroom Connector', category: 'Education',
+                synopsis: 'A platform that uses N8N and LangChain to connect classrooms across the world for collaborative projects, overcoming language barriers with real-time translation agents.',
+                tech: ['N8N', 'LangChain', 'Translation APIs']
+            },
+            {
+                id: 17, title: 'AllyBot', category: 'Community Empowerment',
+                synopsis: 'An AI-powered resource navigator for the trans community. It provides verified information on safe spaces, healthcare providers, and legal aid. Crew.ai agents continuously verify and update information from trusted sources.',
+                tech: ['Crew.ai', 'LangChain', 'Pinecone DB']
+            },
+            {
+                id: 18, title: 'VoiceVerse', category: 'Community Empowerment',
+                synopsis: 'A voice training application for transgender individuals. It uses deep learning to provide real-time feedback on pitch and resonance, with LangChain agents providing personalized exercises and encouragement.',
+                tech: ['LangChain', 'PyTorch', 'WaveNet', 'GANs']
+            },
+            {
+                id: 19, title: 'GuardianFlow', category: 'Community Empowerment',
+                synopsis: 'An automated workflow using N8N that connects to a woman\'s phone. When a user triggers a panic button, it sends their location to trusted contacts, starts audio recording, and alerts emergency services.',
+                tech: ['N8N', 'Twilio API', 'Google Maps API']
+            },
+            {
+                id: 20, title: 'SheStarts', category: 'Community Empowerment',
+                synopsis: 'An AI mentorship platform for women entrepreneurs. It uses Crew.ai agents to research market opportunities, draft business plan sections, and connect founders with potential mentors based on their industry and needs.',
+                tech: ['Crew.ai', 'LangChain', 'LinkedIn API']
+            },
+            {
+                id: 21, title: 'LegalLink AI', category: 'Community Empowerment',
+                synopsis: 'An agentic system designed to help refugees and asylum seekers navigate the legal process. It simplifies legal documents, helps fill out forms, and connects users with pro-bono legal aid organizations.',
+                tech: ['LangChain', 'N8N', 'Document AI']
+            },
+            {
+                id: 22, title: 'MicroLoan Agent', category: 'Community Empowerment',
+                synopsis: 'An AI agent that assists individuals in underserved communities to apply for microloans. It helps prepare financial statements, business proposals, and connects them with microfinance institutions.',
+                tech: ['Crew.ai', 'LangChain', 'FinTech APIs']
+            },
+            {
+                id: 23, title: 'ElderCare Connect', category: 'Community Empowerment',
+                synopsis: 'An N8N workflow for elderly individuals living alone. It automates daily check-ins via voice calls and can alert family members or caregivers if a check-in is missed or if distress is detected.',
+                tech: ['N8N', 'Twilio API', 'Sentiment Analysis']
+            },
+            {
+                id: 24, title: 'HarvestHelper', category: 'Community Empowerment',
+                synopsis: 'An AI agent for smallholder farmers in developing nations. It provides crop disease diagnosis from photos and connects them to local markets, all via a simple SMS-based interface powered by LangChain.',
+                tech: ['LangChain', 'Computer Vision', 'Twilio API']
+            },
+            {
+                id: 25, title: 'FemHealth Navigator', category: 'Community Empowerment',
+                synopsis: 'A conversational AI focused on women\'s health, providing reliable information on often-stigmatized topics. LangChain ensures conversations are empathetic and draw from verified medical sources.',
+                tech: ['LangChain', 'RAG', 'Medical NLP']
+            },
+            {
+                id: 26, title: 'Transcribe for All', category: 'Community Empowerment',
+                synopsis: 'A service that uses advanced speech recognition models to provide free transcription services for activists and journalists in low-income regions, powered by an efficient N8N workflow.',
+                tech: ['N8N', 'Whisper API', 'Deep Learning']
+            },
+            {
+                id: 27, title: 'Digital Artisan', category: 'Community Empowerment',
+                synopsis: 'AI agents that help local artisans from remote communities market their products online. A Crew.ai team can generate product descriptions, take professional-looking photos from simple phone pictures, and list them on e-commerce sites.',
+                tech: ['Crew.ai', 'LangChain', 'GANs', 'Shopify API']
+            },
+            {
+                id: 28, 'title': 'BiasBuster AI', category: 'Community Empowerment',
+                synopsis: 'An agent that scans job descriptions for biased language before they are posted. It helps organizations write more inclusive listings to attract a diverse pool of candidates, particularly women and minorities.',
+                tech: ['LangChain', 'NLP', 'BERT']
+            },
+            {
+                id: 29, 'title': 'IndieNews Aggregator', category: 'Community Empowerment',
+                synopsis: 'A Crew.ai system that empowers independent journalists by creating a personalized news feed that highlights their work, pushing back against mainstream algorithm bias and promoting diverse voices.',
+                tech: ['Crew.ai', 'RSS', 'NLP']
+            },
+            {
+                id: 30, 'title': 'Right To Information (RTI) Agent', category: 'Community Empowerment',
+                synopsis: 'An AI agent that assists citizens in drafting and filing Right To Information requests with government bodies. It simplifies the process, tracks the application, and suggests next steps, empowering civic engagement.',
+                tech: ['LangChain', 'N8N', 'NLP']
+            }
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const projectsGrid = document.getElementById('projects-grid');
+            const noResults = document.getElementById('no-results');
+            const modal = document.getElementById('modal');
+            const modalBg = document.getElementById('modal-bg');
+            const modalClose = document.getElementById('modal-close');
+            const navButtons = document.querySelectorAll('.nav-button');
+            const searchInput = document.getElementById('search-input');
+            let currentCategory = 'all';
+            let currentSearch = '';
+
+            const renderProjects = () => {
+                projectsGrid.innerHTML = '';
+                let filteredProjects = projectsData;
+
+                if (currentCategory !== 'all') {
+                    filteredProjects = filteredProjects.filter(p => p.category === currentCategory);
+                }
+
+                if (currentSearch) {
+                    filteredProjects = filteredProjects.filter(p => 
+                        p.title.toLowerCase().includes(currentSearch) ||
+                        p.tech.some(t => t.toLowerCase().includes(currentSearch))
+                    );
+                }
+                
+                if (filteredProjects.length === 0) {
+                    noResults.classList.remove('hidden');
+                } else {
+                    noResults.classList.add('hidden');
+                }
+
+                filteredProjects.forEach(project => {
+                    const card = document.createElement('div');
+                    card.className = 'project-card bg-white p-6 rounded-2xl shadow-sm cursor-pointer';
+                    card.innerHTML = `
+                        <h3 class="font-bold text-lg text-[#385a4a]">${project.title}</h3>
+                        <p class="text-sm text-gray-500 mb-3">${project.category}</p>
+                        <p class="text-gray-600 text-sm mb-4">${project.synopsis.substring(0, 100)}...</p>
+                        <div class="flex flex-wrap gap-2">
+                            ${project.tech.slice(0, 3).map(t => `<span class="tech-tag px-2 py-1 rounded-md">${t}</span>`).join('')}
+                        </div>
+                    `;
+                    card.addEventListener('click', () => showModal(project));
+                    projectsGrid.appendChild(card);
+                });
+            };
+            
+            const showModal = (project) => {
+                document.getElementById('modal-title').textContent = project.title;
+                document.getElementById('modal-category').textContent = project.category;
+                document.getElementById('modal-synopsis').textContent = project.synopsis;
+                const techContainer = document.getElementById('modal-tech');
+                techContainer.innerHTML = project.tech.map(t => `<span class="tech-tag px-3 py-1 rounded-lg">${t}</span>`).join('');
+                
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => {
+                    modalBg.classList.remove('opacity-0');
+                    const modalBox = document.getElementById('modal-box');
+                    modalBox.classList.remove('opacity-0', 'scale-95');
+                    modalBox.classList.add('opacity-100', 'scale-100');
+                }, 10);
+            };
+
+            const hideModal = () => {
+                const modalBox = document.getElementById('modal-box');
+                modalBox.classList.add('opacity-0', 'scale-95');
+                modalBg.classList.add('opacity-0');
+
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 300);
+            };
+
+            modalBg.addEventListener('click', hideModal);
+            modalClose.addEventListener('click', hideModal);
+
+            navButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    navButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    currentCategory = button.dataset.category;
+                    
+                    const overviewSection = document.getElementById('overview-section');
+                    if(currentCategory === 'all') {
+                        overviewSection.classList.remove('hidden');
+                    } else {
+                        overviewSection.classList.add('hidden');
+                    }
+                    
+                    renderProjects();
+                });
+            });
+
+            searchInput.addEventListener('input', (e) => {
+                currentSearch = e.target.value.toLowerCase();
+                renderProjects();
+            });
+
+            const setupCharts = () => {
+                const categories = [...new Set(projectsData.map(p => p.category))];
+                const categoryCounts = categories.map(cat => projectsData.filter(p => p.category === cat).length);
+                const categoryColors = ['#4A7C59', '#6A994E', '#A3B18A'];
+                
+                const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+                new Chart(categoryCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: categories,
+                        datasets: [{
+                            data: categoryCounts,
+                            backgroundColor: categoryColors,
+                            borderColor: '#F8F7F4',
+                            borderWidth: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    font: { family: 'Inter' }
+                                }
+                            }
+                        },
+                         onClick: (evt, elements) => {
+                            if (elements.length > 0) {
+                                const clickedLabel = categories[elements[0].index];
+                                const targetButton = document.querySelector(`.nav-button[data-category="${clickedLabel}"]`);
+                                if (targetButton) {
+                                    targetButton.click();
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                const tech = ['Crew.ai', 'LangChain', 'N8N'];
+                const techCounts = tech.map(t => projectsData.filter(p => p.tech.includes(t)).length);
+                const techCtx = document.getElementById('techChart').getContext('2d');
+                new Chart(techCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: tech,
+                        datasets: [{
+                            label: 'Number of Projects',
+                            data: techCounts,
+                            backgroundColor: '#6A994E',
+                            borderRadius: 5,
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                           x: { beginAtZero: true, grid: { display: false } },
+                           y: { grid: { display: false } }
+                        }
+                    }
+                });
+            };
+
+            renderProjects();
+            setupCharts();
+        });
+    </script>
+</body>
+</html>
